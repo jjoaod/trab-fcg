@@ -152,7 +152,11 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode
 void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
 void CursorPosCallback(GLFWwindow* window, double xpos, double ypos);
 void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset);
+glm::vec4 right;
 
+float camera_pos_x = 0.0f;
+float camera_pos_y = 0.0f;
+float camera_pos_z = 0.0f;
 // Definimos uma estrutura que armazenará dados necessários para renderizar
 // cada objeto da cena virtual.
 struct SceneObject
@@ -221,7 +225,8 @@ GLint g_projection_uniform;
 GLint g_object_id_uniform;
 GLint g_bbox_min_uniform;
 GLint g_bbox_max_uniform;
-
+float x_movement = 0.0f;
+float z_movement= 0.0f;
 // Número de texturas carregadas pela função LoadTextureImage()
 GLuint g_NumLoadedTextures = 0;
 
@@ -232,6 +237,17 @@ glm::vec3 Bezier(glm::vec3 p0, glm::vec3 p1, glm::vec3 p2, glm::vec3 p3, float t
            3*u*t*t * p2 +
            t*t*t * p3;
 }
+float r;
+float y;
+float z;
+float x;
+
+
+
+glm::vec4 camera_position_c;
+glm::vec4 camera_lookat_l;
+glm::vec4 camera_view_vector;
+glm::vec4 camera_up_vector;
 
 std::vector<glm::vec3> GenerateBezierCurve(const glm::vec3& p0, const glm::vec3& p1, const glm::vec3& p2, const glm::vec3& p3) {
     std::vector<glm::vec3> points;
@@ -241,7 +257,7 @@ std::vector<glm::vec3> GenerateBezierCurve(const glm::vec3& p0, const glm::vec3&
     return points;
 }
 
-
+int camera_free_or_look = 0;
 
 int main(int argc, char* argv[])
 {
@@ -250,6 +266,9 @@ int main(int argc, char* argv[])
     std::cout << "=== Bunny Display Menu ===" << std::endl;
     std::cout << "How many bunnies would you like to display? (1-4): ";
     std::cin >> num_bunnies;
+
+    std::cout << "free cam or look at? 1 - free cam - 2-look at:";
+    std::cin >> camera_free_or_look;
 
 
     if (num_bunnies < 1) num_bunnies = 1;
@@ -385,18 +404,44 @@ int main(int argc, char* argv[])
         // Computamos a posição da câmera utilizando coordenadas esféricas.  As
         // variáveis g_CameraDistance, g_CameraPhi, e g_CameraTheta são
         // controladas pelo mouse do usuário. Veja as funções CursorPosCallback()
-        // e ScrollCallback().
-        float r = g_CameraDistance;
-        float y = r*sin(g_CameraPhi);
-        float z = r*cos(g_CameraPhi)*cos(g_CameraTheta);
-        float x = r*cos(g_CameraPhi)*sin(g_CameraTheta);
+        if(camera_free_or_look == 2){// e ScrollCallback().
+         r = g_CameraDistance;
+         y = r*sin(g_CameraPhi);
+         z = r*cos(g_CameraPhi)*cos(g_CameraTheta);
+         x = r*cos(g_CameraPhi)*sin(g_CameraTheta);
 
         // Abaixo definimos as varáveis que efetivamente definem a câmera virtual.
         // Veja slides 195-227 e 229-234 do documento Aula_08_Sistemas_de_Coordenadas.pdf.
-        glm::vec4 camera_position_c  = glm::vec4(x,y,z,1.0f); // Ponto "c", centro da câmera
-        glm::vec4 camera_lookat_l    = glm::vec4(0.0f,0.0f,0.0f,1.0f); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
-        glm::vec4 camera_view_vector = camera_lookat_l - camera_position_c; // Vetor "view", sentido para onde a câmera está virada
-        glm::vec4 camera_up_vector   = glm::vec4(0.0f,1.0f,0.0f,0.0f); // Vetor "up" fixado para apontar para o "céu" (eito Y global)
+        camera_position_c  = glm::vec4(x,y,z,1.0f); // Ponto "c", centro da câmera
+        camera_lookat_l    = glm::vec4(0.0f,0.0f,0.0f,1.0f); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
+        camera_view_vector = camera_lookat_l - camera_position_c; // Vetor "view", sentido para onde a câmera está virada
+        camera_up_vector   = glm::vec4(0.0f,1.0f,0.0f,0.0f); // Vetor "up" fixado para apontar para o "céu" (eito Y global)
+
+}  else if(camera_free_or_look == 1){
+         r = g_CameraDistance;
+         y = r*sin(g_CameraPhi);
+         z = r*cos(g_CameraPhi)*cos(g_CameraTheta);
+         x = r*cos(g_CameraPhi)*sin(g_CameraTheta);
+
+        // Abaixo definimos as varáveis que efetivamente definem a câmera virtual.
+        // Veja slides 195-227 e 229-234 do documento Aula_08_Sistemas_de_Coordenadas.pdf.
+
+
+
+
+        camera_lookat_l    = glm::vec4(0.0f,0.0f,0.0f,1.0f); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
+
+        camera_up_vector   = glm::vec4(0.0f,1.0f,0.0f,0.0f); // Vetor "up" fixado para apontar para o "céu" (eito Y global)
+        camera_view_vector = glm::vec4(x, y, z, 0.0f);
+        right = crossproduct(camera_view_vector, camera_up_vector);
+
+        camera_pos_x += 0.05f * ((x* x_movement)+(z_movement * right.x));
+        camera_pos_y += 0.05 * ((y* x_movement)+(z_movement * right.y));
+        camera_pos_z += 0.05  * ((z* x_movement)+(z_movement * right.z));
+
+        camera_position_c  = glm::vec4(camera_pos_x,camera_pos_y,camera_pos_z,1.0f); // Ponto "c", centro da câmera
+
+}
 
         // Computamos a matriz "View" utilizando os parâmetros da câmera para
         // definir o sistema de coordenadas da câmera.  Veja slides 2-14, 184-190 e 236-242 do documento Aula_08_Sistemas_de_Coordenadas.pdf.
@@ -1161,7 +1206,6 @@ void CursorPosCallback(GLFWwindow* window, double xpos, double ypos)
     // instante de tempo, e usamos esta movimentação para atualizar os
     // parâmetros que definem a posição da câmera dentro da cena virtual.
     // Assim, temos que o usuário consegue controlar a câmera.
-
     if (g_LeftMouseButtonPressed)
     {
         // Deslocamento do cursor do mouse em x e y de coordenadas de tela!
@@ -1219,6 +1263,9 @@ void CursorPosCallback(GLFWwindow* window, double xpos, double ypos)
         g_LastCursorPosX = xpos;
         g_LastCursorPosY = ypos;
     }
+
+
+
 }
 
 // Função callback chamada sempre que o usuário movimenta a "rodinha" do mouse.
@@ -1314,6 +1361,39 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
         LoadShadersFromFiles();
         fprintf(stdout,"Shaders recarregados!\n");
         fflush(stdout);
+    }
+    if(camera_free_or_look ==1){
+        if (key == GLFW_KEY_W) {
+        if (action == GLFW_PRESS) {
+            x_movement = 1.0f;
+        } else if (action == GLFW_RELEASE) {
+            x_movement = 0.0f;
+        }
+    }
+
+    if (key == GLFW_KEY_S) {
+        if (action == GLFW_PRESS) {
+            x_movement = -1.0f;
+        } else if (action == GLFW_RELEASE) {
+            x_movement = 0.0f;
+        }
+    }
+
+    if (key == GLFW_KEY_D) {
+        if (action == GLFW_PRESS) {
+            z_movement = 1.0f;
+        } else if (action == GLFW_RELEASE) {
+            z_movement = 0.0f;
+        }
+    }
+
+    if (key == GLFW_KEY_A) {
+        if (action == GLFW_PRESS) {
+            z_movement = -1.0f;
+        } else if (action == GLFW_RELEASE) {
+            z_movement = 0.0f;
+        }
+    }
     }
 
 }
