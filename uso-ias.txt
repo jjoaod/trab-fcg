@@ -1,2 +1,0 @@
-- lógica menu
-- lógica quantos coelhos na tela
